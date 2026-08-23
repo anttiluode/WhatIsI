@@ -72,10 +72,19 @@ class App:
                 f"\n[{row['step']}] heard: {row['heard']}\n"
                 f"    action: {row['action']}  target: {row['target']}  {'✓' if row['correct'] else '·'}\n"
                 f"  feedback: {row['feedback']}\n"
-                f"  acc={row['accuracy']:.3f} loss={row['loss']:.3f} memory={row['memory_norm']:.2f} source-gap={row['source_gap']:+.3f}\n"
+                f"  recent={row['recent_accuracy']:.3f} all={row['accuracy']:.3f} "
+                f"loss={row['loss']:.3f} memory={row['memory_norm']:.2f} source-gap={row['source_gap']:+.3f}\n"
             )
+            if self.args.teacher != "scripted" and self.args.refresh_every > 0 and row["step"] % self.args.refresh_every == 0:
+                try:
+                    n = self.life.teacher.refresh(allow_deixis=row["deictic_language_enabled"])
+                    self.life.teacher.save_bank(self.args.bank)
+                    self.q.put(f"  teacher refreshed: +{n} new paraphrases\n")
+                except Exception as e:
+                    self.q.put(f"  teacher refresh warning: {e}\n")
             if row["step"] % 100 == 0:
                 self.life.checkpoint(self.args.checkpoint)
+                self.life.save_log(self.args.log)
 
     def poll(self):
         try:
@@ -101,6 +110,7 @@ def main():
     ap.add_argument("--model")
     ap.add_argument("--ollama-model", default="phi3:mini")
     ap.add_argument("--gpu-layers", type=int, default=-1)
+    ap.add_argument("--refresh-every", type=int, default=250)
     ap.add_argument("--seed", type=int, default=4)
     ap.add_argument("--device")
     ap.add_argument("--deixis-after", type=int, default=2000)
