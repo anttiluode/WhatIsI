@@ -215,16 +215,16 @@ self + I        -> causal address
 self + YOU      -> visible addressee
 ```
 
-Fresh development seeds 3 / 4 / 5:
+Fresh runs through the final committed evaluator, seeds 3 / 4 / 5:
 
 ```text
-self-produced I accuracy        0.9988 / 0.9942 / 0.9933
-zero-state self I              0.2668 / 0.2289 / 0.2197
+self-produced I accuracy        0.9977 / 0.9942 / 0.9933
+zero-state self I              0.2309 / 0.2289 / 0.2197
 external I                     1.000 / 1.000 / 1.000
 external I with state zeroed   1.000 / 1.000 / 1.000
 YOU                            1.000 / 1.000 / 1.000
 YOU with state zeroed          1.000 / 1.000 / 1.000
-counterfactual I state swap    0.9699 / 0.9583 / 0.9201
+counterfactual I state swap    0.9751 / 0.9479 / 0.9028
 ```
 
 The decisive intervention holds fixed:
@@ -236,7 +236,7 @@ late lexical-router weights
 slow Gate-4B weights
 ```
 
-Only the old causal state is replaced by a centroid associated with another body currently visible in the same scene.
+Only the old causal state is replaced by a centroid associated with another body currently visible in the same held-out world batch.
 
 ```text
 same scene
