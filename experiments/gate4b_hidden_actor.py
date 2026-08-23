@@ -19,7 +19,8 @@ def main():
         cfg.test_lives = 64
         cfg.epochs = 4
 
-    result = run_many(tuple(args.seeds), cfg=cfg, device=args.device)
+    # whatisi.gate4b.run_many names its config parameter `c`.
+    result = run_many(tuple(args.seeds), c=cfg, device=args.device)
     print(json.dumps(result, indent=2, sort_keys=True))
 
 
