@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, asdict
 import json
+import hashlib
+import re
 import random
 from pathlib import Path
 from collections import deque
@@ -13,6 +15,8 @@ import torch.nn.functional as F
 
 from .language_teacher import ACTIONS, LanguageTeacher
 
+# Stable hashed word tokens. Provenance is a separate embedding, so identical words
+# have identical token IDs whether observed or emitted.
 SRC_OBS = 0
 SRC_ACT = 1
 SRC_FEEDBACK = 2
@@ -30,15 +34,15 @@ ACTION_SURFACE = {
 
 @dataclass
 class LifeConfig:
-    d_model: int = 128
+    d_model: int = 64
     n_heads: int = 4
-    n_layers: int = 3
-    ff: int = 384
-    memory_dim: int = 32
-    max_tokens: int = 384
+    n_layers: int = 2
+    ff: int = 192
+    memory_dim: int = 24
+    max_tokens: int = 96
     context_events: int = 12
     dropout: float = 0.05
-    lr: float = 2e-4
+    lr: float = 8e-4
     weight_decay: float = 1e-4
     unroll: int = 8
     imitation_weight: float = 1.0
@@ -47,6 +51,10 @@ class LifeConfig:
     sample_temperature: float = 0.85
     epsilon_action: float = 0.10
     deixis_after: int = 2000
+    replay_updates: int = 0
+    replay_capacity: int = 512
+    consolidate_every: int = 64
+    consolidation_steps: int = 64
 
 
 @dataclass
@@ -111,27 +119,42 @@ class Event:
     changed: int = 0
 
 
-class ByteEventEncoder:
+class EventEncoder:
+    VOCAB_SIZE = 2048
+
+    @staticmethod
+    def _token_id(token: str) -> int:
+        raw = hashlib.blake2b(token.lower().encode("utf-8"), digest_size=4).digest()
+        return int.from_bytes(raw, "little") % EventEncoder.VOCAB_SIZE
+
+    @staticmethod
+    def _tokens(text: str) -> list[str]:
+        return re.findall(r"[A-Za-z]+|[0-9]+|[^\w\s]", text.lower()) or ["<empty>"]
+
     @staticmethod
     def encode(events: list[Event], max_tokens: int):
         ids: list[int] = []
         src: list[int] = []
         for ev in events:
-            b = ev.text.encode("utf-8", errors="replace") + b"\n"
-            ids.extend(b)
-            src.extend([ev.source] * len(b))
+            toks = EventEncoder._tokens(ev.text) + ["<eoe>"]
+            ids.extend(EventEncoder._token_id(t) for t in toks)
+            src.extend([ev.source] * len(toks))
         ids = ids[-max_tokens:]
         src = src[-max_tokens:]
         if not ids:
-            ids, src = [10], [SRC_PAD]
+            ids, src = [EventEncoder._token_id("<empty>")], [SRC_PAD]
         return torch.tensor(ids, dtype=torch.long), torch.tensor(src, dtype=torch.long)
+
+
+# Backward-compatible name used by the first tests/docs.
+ByteEventEncoder = EventEncoder
 
 
 class LifeTransformer(nn.Module):
     def __init__(self, cfg: LifeConfig, n_actions: int = len(ACTIONS)):
         super().__init__()
         self.cfg = cfg
-        self.byte_emb = nn.Embedding(256, cfg.d_model)
+        self.byte_emb = nn.Embedding(EventEncoder.VOCAB_SIZE, cfg.d_model)
         self.src_emb = nn.Embedding(N_SOURCES, cfg.d_model)
         self.pos_emb = nn.Embedding(cfg.max_tokens + 1, cfg.d_model)
         self.mem_to_token = nn.Linear(cfg.memory_dim, cfg.d_model)
@@ -185,6 +208,8 @@ class LanguageLife:
         self.memory = torch.zeros(1, self.cfg.memory_dim, device=self.device)
         self.world = WorldState()
         self.events: deque[Event] = deque(maxlen=self.cfg.context_events)
+        self.replay: deque[tuple[str, str, int]] = deque(maxlen=self.cfg.replay_capacity)
+        self.recent_correct: deque[int] = deque(maxlen=100)
         self.step = 0
         self._losses: list[torch.Tensor] = []
         self.stats = {"correct": 0, "turns": 0, "loss": 0.0, "source_gap": 0.0}
@@ -192,7 +217,7 @@ class LanguageLife:
         self._log_cursor = 0
 
     def _encode(self, events: list[Event]):
-        ids, src = ByteEventEncoder.encode(events, self.cfg.max_tokens)
+        ids, src = EventEncoder.encode(events, self.cfg.max_tokens)
         return ids.to(self.device), src.to(self.device)
 
     def _action_from_logits(self, logits: torch.Tensor, training: bool = True) -> int:
@@ -213,29 +238,52 @@ class LanguageLife:
                 probs.append(float(torch.softmax(c, -1)[0, 1].item()))
         return probs[1] - probs[0]
 
+    def _consolidate_replay(self):
+        if not self.replay or self.cfg.consolidation_steps <= 0:
+            return
+        # End any temporal graph before changing slow weights. Persistent numeric
+        # life-state survives; slow language machinery learns from replay.
+        self.memory = self.memory.detach()
+        self.model.train(True)
+        zero_mem = torch.zeros_like(self.memory)
+        for _ in range(self.cfg.consolidation_steps):
+            wtxt, utt, tidx = self.rng.choice(list(self.replay))
+            ri, rs = self._encode([Event(SRC_WORLD, wtxt), Event(SRC_OBS, utt)])
+            logits, _, _ = self.model(ri, rs, zero_mem)
+            loss = F.cross_entropy(logits, torch.tensor([tidx], device=self.device))
+            self.opt.zero_grad(set_to_none=True)
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
+            self.opt.step()
+
     def turn(self, train: bool = True) -> dict:
         self.model.train(train)
         target_action = self.teacher.choose_target(self.world.valid_actions())
         allow_deixis = self.step >= self.cfg.deixis_after
         heard = self.teacher.utterance(target_action, allow_deixis=allow_deixis)
-        self.events.append(Event(SRC_WORLD, self.world.describe()))
-        self.events.append(Event(SRC_OBS, heard))
+        world_event = Event(SRC_WORLD, self.world.describe())
+        heard_event = Event(SRC_OBS, heard)
+        self.events.append(world_event)
+        self.events.append(heard_event)
 
-        pre_action_events = list(self.events)
+        # Current utterance + persistent memory choose the action. Older text is
+        # excluded here; if the past matters, the life-state has to carry it.
+        pre_action_events = [world_event, heard_event]
         ids, src = self._encode(pre_action_events)
         action_logits, _, _ = self.model(ids, src, self.memory)
         chosen_idx = self._action_from_logits(action_logits, training=train)
         chosen = ACTIONS[chosen_idx]
         spoken_surface = ACTION_SURFACE[chosen]
         target_idx = ACTIONS.index(target_action)
+        self.replay.append((self.world.describe(), heard, target_idx))
 
-        # Same bytes, two provenances, before feedback exists.
+        # Same phrase, two provenances, before feedback exists.
         ids_a, src_a = self._encode(pre_action_events + [Event(SRC_ACT, spoken_surface)])
         _, causal_act, _ = self.model(ids_a, src_a, self.memory)
         ids_o, src_o = self._encode(pre_action_events + [Event(SRC_OBS, spoken_surface)])
         _, causal_obs, _ = self.model(ids_o, src_o, self.memory)
 
-        # Only the ACT stream changes the world.
+        # Only ACT executes.
         self.events.append(Event(SRC_ACT, spoken_surface))
         feedback, changed = self.world.apply(chosen)
         self.events.append(Event(SRC_FEEDBACK, feedback, int(changed)))
@@ -247,11 +295,23 @@ class LanguageLife:
             echoed = True
 
         loss_action = F.cross_entropy(action_logits, torch.tensor([target_idx], device=self.device))
+        # This head predicts causal authority, not whether an attempted action happened
+        # to be blocked by the current world state.
         loss_causal = 0.5 * (
-            F.cross_entropy(causal_act, torch.tensor([int(changed)], device=self.device))
+            F.cross_entropy(causal_act, torch.tensor([1], device=self.device))
             + F.cross_entropy(causal_obs, torch.tensor([0], device=self.device))
         )
-        loss = self.cfg.imitation_weight * loss_action + self.cfg.causal_weight * loss_causal
+
+        replay_losses = []
+        if self.cfg.replay_updates > 0 and self.replay:
+            zero_mem = torch.zeros_like(self.memory).detach()
+            for _ in range(min(self.cfg.replay_updates, len(self.replay))):
+                wtxt, utt, tidx = self.rng.choice(list(self.replay))
+                ri, rs = self._encode([Event(SRC_WORLD, wtxt), Event(SRC_OBS, utt)])
+                rlogits, _, _ = self.model(ri, rs, zero_mem)
+                replay_losses.append(F.cross_entropy(rlogits, torch.tensor([tidx], device=self.device)))
+        loss_replay = torch.stack(replay_losses).mean() if replay_losses else loss_action.new_zeros(())
+        loss = self.cfg.imitation_weight * (loss_action + loss_replay) + self.cfg.causal_weight * loss_causal
         if train:
             self._losses.append(loss)
 
@@ -264,6 +324,7 @@ class LanguageLife:
         correct = int(chosen == target_action)
         self.stats["correct"] += correct
         self.stats["turns"] += 1
+        self.recent_correct.append(correct)
         self.stats["loss"] = float(loss.detach().item())
         if self.step % 10 == 0:
             self.stats["source_gap"] = self._source_gap_probe(spoken_surface)
@@ -276,6 +337,17 @@ class LanguageLife:
             self.opt.step()
             self._losses.clear()
             self.memory = self.memory.detach()
+
+        if train and self.cfg.consolidate_every > 0 and self.step % self.cfg.consolidate_every == 0:
+            if self._losses:
+                total = torch.stack(self._losses).mean()
+                self.opt.zero_grad(set_to_none=True)
+                total.backward()
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
+                self.opt.step()
+                self._losses.clear()
+                self.memory = self.memory.detach()
+            self._consolidate_replay()
 
         row = {
             "step": self.step,
@@ -290,6 +362,7 @@ class LanguageLife:
             "deictic_language_enabled": allow_deixis,
             "loss": float(loss.detach().item()),
             "accuracy": self.stats["correct"] / max(1, self.stats["turns"]),
+            "recent_accuracy": float(sum(self.recent_correct) / max(1, len(self.recent_correct))),
             "memory_norm": float(self.memory.detach().norm().item()),
             "source_gap": float(self.stats["source_gap"]),
         }
@@ -308,6 +381,8 @@ class LanguageLife:
             "cfg": asdict(self.cfg),
             "stats": self.stats,
             "events": [asdict(ev) for ev in self.events],
+            "replay": list(self.replay),
+            "recent_correct": list(self.recent_correct),
         }, path)
 
     def load_checkpoint(self, path: str | Path):
@@ -322,6 +397,11 @@ class LanguageLife:
         self.events.clear()
         for row in ck.get("events", []):
             self.events.append(Event(**row))
+        self.replay.clear()
+        for row in ck.get("replay", []):
+            self.replay.append(tuple(row))
+        self.recent_correct.clear()
+        self.recent_correct.extend(int(x) for x in ck.get("recent_correct", []))
 
     def save_log(self, path: str | Path):
         path = Path(path)
