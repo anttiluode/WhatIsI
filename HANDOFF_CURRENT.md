@@ -8,15 +8,17 @@ The repo began from the thought that `I` might be a special persistent layer acr
 
 Do **not** restart from that assumption.
 
-The current object is narrower and more interesting:
+The current object is narrower:
 
 > **A generic recurrent system can learn a persistent deictic address for the current causal owner, without being given self labels, because many otherwise unrelated queries share the same binding. That address can then be reused by new tasks.**
 
 This is a functional result, not a consciousness claim.
 
-## Gate 0 — local causal pointer: PASS
+## Gates 0–3
 
-A four-float action/consequence correlation state identifies the causally controlled channel, survives no-action intervals, ignores a deliberately more energetic distractor, and rebinds after agency transfer. No backpropagation occurs through the lifetime.
+### Gate 0 — local causal pointer: PASS
+
+A four-float action/consequence correlation state identifies the causally controlled channel, survives no-action intervals, ignores a deliberately more energetic distractor, and rebinds after agency transfer.
 
 Fresh `1000..1039`:
 
@@ -27,11 +29,9 @@ salience attacker        0.253
 median transfer recovery 14 active steps
 ```
 
-This establishes that online local deictic learning is coherent.
+### Gate 1 — generic recurrence attacker: SPECIAL-PRIMITIVE CLAIM FAILS
 
-## Gate 1 — generic recurrence attacker: SPECIAL-PRIMITIVE CLAIM FAILS
-
-A generic GRU with exactly the same four persistent floats learns the same causal-owner problem and is better overall and much better after ownership transfer.
+A generic GRU with the same four persistent floats learns the same problem and is better overall and much better after ownership transfer.
 
 Hard OOD:
 
@@ -44,9 +44,9 @@ pointer transfer  0.547
 generic transfer  0.810
 ```
 
-Safe conclusion: do not call the hand-written pointer a new primitive. A generic recurrent latent can carry the same information.
+Do not resurrect the claim that a hand-designed self pointer is a new primitive.
 
-## Gate 2 — emergent self-address: PASS
+### Gate 2 — emergent deictic address: PASS
 
 Train an 8-float generic GRU **without owner/self labels**. Its only task is to return fresh random values attached to whichever entity is currently causally controlled.
 
@@ -58,62 +58,158 @@ linear hidden->owner probe            0.9576
 counterfactual centroid intervention  0.9744
 ```
 
-Replacing hidden state with a different owner's centroid makes the model answer near that different entity's current random value.
+Safe conclusion: recurrent state contains a causally used deictic owner variable even though the objective never names one.
 
-Safe conclusion:
+### Gate 3 — reuse / factorization: PASS
 
-> The recurrent state contains a causally used deictic owner variable, even though the training objective never names one.
-
-## Gate 3 — reuse / factorization: PASS
-
-Freeze the Gate-2 recurrent core. Invent a new binary self-relative query task. Train only a tiny new head from 256 task labels; never provide owner labels. Evaluate only during silent periods, where current action/consequence evidence cannot identify the owner.
+Freeze the Gate-2 recurrent core. Invent a new binary self-relative task. Train only a tiny new head from 256 task labels; never provide owner labels. Evaluate only in silent periods.
 
 Fresh `501..503`:
 
 ```text
-frozen Gate-2 self core    0.9979
+frozen Gate-2 core         0.9979
 same-size random core      0.7653
 current sensory state      0.6630
 oracle                     1.0000
 ```
 
-This is the strongest reason so far to call the latent a **join key** rather than a task-specific code: a new task can cheaply reuse it.
+This is the strongest evidence so far for the **join-key** interpretation.
 
-## What this says about backpropagation
+---
 
-Do not frame the problem as "how do we backpropagate an I through a lifetime?"
+# Gate 4A — Language Life: BUILT, EXPLORATORY, NO VERDICT
 
-There are at least two timescales:
+The current working build is a small transformer with a persistent 32-float life-state.
+
+It receives language through two causally different channels:
 
 ```text
-slow learning
-    backprop can train the recurrent/update machinery
-
-living / inference
-    persistent state h_I(t) changes by forward dynamics
-    h_I(t) -> h_I(t+1)
+OBS  outside language
+ACT  language actually emitted by the student
 ```
 
-Gate 0 shows a fully local online update can maintain the binding. Gates 1–3 show a learned recurrent transition can construct a more flexible version. The open problem is to combine those virtues: generic, reusable self-state with a biologically/local-style fast update rather than relying on BPTT as the lifetime mechanism.
+Only `ACT` changes the symbolic world. The outside world sometimes repeats the exact same action phrase as `OBS`, and that repetition is non-causal. Lexical content therefore cannot be the provenance shortcut.
 
-## Current working definition
+Student loop:
 
-For this repo, `I` provisionally means:
+```text
+world description
+      +
+outside utterance OBS
+      |
+      v
+small byte transformer <---- persistent life state
+      |
+      v
+student ACT phrase
+      |
+      v
+symbolic world changes
+      |
+      v
+feedback/consequence
+      |
+      v
+life-state update
+```
 
-> **A persistent, reusable deictic state that binds computation to the entity whose actions have the relevant causal consequences.**
+Backprop runs through short unrolls (default 8 turns), learning the transition/update machinery. It does **not** backpropagate through an entire synthetic lifetime.
 
-Do not conflate that with a complete self-model, autobiographical memory, narrative identity, or phenomenal consciousness.
+This is a bridge between the Gate-2/3 recurrent result and the still-open local/test-time plasticity question.
 
-## Next road
+## Teacher
 
-### Gate 4 — local fast updater versus BPTT-trained recurrence
+The teacher is outside the mechanism. It only supplies/paraphrases simple requested actions.
 
-Build a fast-weight / local prediction-error updater that changes persistent state online while slow feature machinery is frozen. Compare it to the Gate-1/2 GRU under agency transfers, long silent intervals, and novel query reuse.
+Backends:
 
-The thing to earn is not merely accuracy. Ask whether a small local write rule can acquire and revise the same reusable deictic address.
+```text
+scripted
+llama-cpp GGUF
+Ollama
+```
 
-### Gate 5 — transformer placement
+Recommended local teacher:
 
-Only after Gate 4: compare persistent prefix token, recurrent KV memory, per-block modulation bus, and generic sidecar under matched state budgets.
+```text
+microsoft/Phi-3-mini-4k-instruct-gguf
+Phi-3-mini-4k-instruct-q4.gguf
+```
 
-A special `I layer` is **not** currently earned.
+The teacher may not inspect hidden state or label self/identity.
+
+## Curriculum
+
+Before `deixis_after` (default turn 2000), teacher utterances avoid first- and second-person pronouns.
+
+Afterward, `I` / `you` phrasing may enter the external language stream.
+
+The intended test is whether deictic words later bind onto an already learned causal/provenance structure rather than creating it by label.
+
+## Current live metrics
+
+```text
+action accuracy
+training loss
+persistent memory norm
+source-gap
+```
+
+`source-gap` compares predicted world-changing probability for the same phrase appended as `ACT` versus `OBS`.
+
+A positive source-gap only establishes causal provenance learning. It is **not** a self-address result.
+
+## What to run now
+
+First run scripted so behavior is attributable to the student:
+
+```bash
+pip install -e '.[torch]'
+python experiments/gate4a_language_life.py --teacher scripted --steps 5000
+```
+
+GUI:
+
+```bash
+python experiments/run_language_gui.py --teacher scripted
+```
+
+Then optionally add Phi teacher variation:
+
+```bash
+pip install -e '.[teacher]'
+python experiments/download_phi_teacher.py
+python experiments/gate4a_language_life.py \
+  --teacher llama \
+  --model models/Phi-3-mini-4k-instruct-q4.gguf \
+  --steps 5000
+```
+
+Use `--resume` to continue a checkpoint.
+
+## Next scientific attacker after a long Language Life run
+
+Do **not** declare emergence from dialogue looking interesting.
+
+Freeze the student and create a new delayed self-relative task that never receives source labels. Compare:
+
+```text
+persistent life-state
+context-only matched transformer
+random persistent state
+state-shuffled / state-intervened model
+```
+
+Then perform an intervention analogous to Gate 2: alter persistent state while keeping current words/world fixed and ask whether first-person/deictic behavior follows the injected state.
+
+Only that kind of result can connect Language Life back to the earned Gates 2–3 result.
+
+## Still-open original Gate 4
+
+Can a generic reusable deictic address be acquired/revised by a **local or test-time plasticity rule while the slow model stays fixed**, rather than by BPTT-trained recurrence?
+
+Language Life does not answer this yet.
+
+## Transformer placement
+
+A special `I layer` remains unearned. If Language Life eventually produces a reusable deictic state, compare prefix/memory token, recurrent KV state, per-block bus, and generic sidecar under matched budgets rather than assuming one placement.
