@@ -1,0 +1,10 @@
+FROM ./models/Phi-3-mini-4k-instruct-q4.gguf
+
+TEMPLATE """<|user|>
+{{ .Prompt }}<|end|>
+<|assistant|>
+"""
+
+PARAMETER stop "<|end|>"
+PARAMETER temperature 0.65
+PARAMETER num_ctx 4096
