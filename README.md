@@ -1,70 +1,48 @@
 # WhatIsI
 
-**A falsification-driven toy lab asking whether a useful computational object corresponding to `I` can emerge without being named or installed as a special symbol.**
+**A falsification-driven toy lab asking what computational role, if any, deserves the deictic word `I`.**
 
-This repo is not a consciousness detector. It does not claim qualia, sentience, personhood, or a new neural-network primitive.
+This repo does **not** test consciousness, qualia, personhood, or sentience. It asks a smaller question:
 
-The narrower question is:
+> If a learning system acts, receives consequences, persists through time, and repeatedly has to answer questions relative to the same causal agent, does it construct a persistent **deictic self-address** — an internal answer to "which represented entity is currently the source of these actions and owner of their consequences?"
 
-> If a learning system acts, receives consequences, persists through time, and repeatedly has to answer questions relative to the same causal agent, does it benefit from constructing a persistent **deictic self-address** — an internal answer to "which currently represented entity is the source of these actions and the owner of their consequences?"
-
-The first session already changed the hypothesis substantially.
+The first session already killed the starting idea that `I` should simply be installed as a special transformer layer.
 
 ```text
-initial thought
-    "I is a special layer"
-             |
-             v
-Gate 0: a locally updated causal pointer works
-             |
-             v
-Gate 1 attacker: generic 4-float GRU works better
-             |
-             v
-special primitive claim dies
-             |
-             v
-Gate 2: train generic recurrence without self labels
-        on arbitrary self-relative queries
-             |
-             v
-hidden state develops a decodable and causally
-manipulable self-address anyway
+"I is a special layer"
+        |
+        v
+Gate 0  local causal pointer works
+        |
+        v
+Gate 1  generic 4-float GRU works better
+        |      -> special primitive claim dies
+        v
+Gate 2  generic recurrence, no self labels
+        -> self-address emerges anyway
+        v
+Gate 3  freeze core, invent new task
+        -> latent transfers as reusable join key
 ```
 
-The current live idea is therefore **not** "put an ego module in a transformer."
+The current hypothesis is:
 
-It is:
+> **A self-address may be an ordinary recurrent latent variable that learning discovers because many otherwise unrelated predictions share the same deictic binding.**
 
-> **A self-address may be a reusable latent variable that generic learning discovers because many otherwise unrelated predictions share the same deictic binding.**
+## Gate 0 — local online deictic state
 
----
+Four candidate sensorimotor channels are present. Only one is causally controlled by the agent's motor command. Surface-like nuisance features are scrambled and one non-self channel is deliberately more energetic than the controlled channel.
 
-## Gate 0 — can a persistent deictic pointer exist without backpropagating through a life?
-
-The toy world contains four candidate sensorimotor channels. Only one is causally controlled by the agent's motor command. Surface labels and appearance-like nuisance features are scrambled. One non-self channel is deliberately *more active* than the controlled channel.
-
-A four-float state updates only from local action-consequence contingency:
+A four-float state updates only from local action/consequence contingency:
 
 ```text
-motor command a(t)
-        |
-        v
-candidate consequences Δx_i(t)
-        |
-        v
-local evidence e_i = a(t) Δx_i(t)
-        |
-        v
-persistent score_i
-        |
-        v
-belief over current causal owner
+e_i(t) = action(t) * consequence_i(t)
+score_i <- EMA(score_i, e_i)
 ```
 
-No gradient is propagated through the lifetime. During intervals with no action, the state simply persists.
+There is no lifetime backpropagation. With no action, state simply persists.
 
-Fresh seeds `1000..1039`:
+Fresh `1000..1039`:
 
 ```text
 causal-pointer accuracy                 1.000
@@ -73,20 +51,15 @@ salience-memory accuracy                0.253
 silent-window causal accuracy           1.000
 silent-window instantaneous accuracy    0.200
 median recovery after agency transfer   14 active steps
-private-value MSE / uniform MSE          0.00246
 ```
 
-**Gate 0 passes.** This only establishes a coherent object: a persistent deictic binding can be learned online from causal contingency with a tiny local rule.
+**PASS.** A tiny local rule can maintain a persistent causal/deictic binding.
 
----
+## Gate 1 — generic-memory attacker
 
-## Gate 1 — is that object a special computational primitive?
+Replace the hand-written pointer with a generic GRU using the **same four persistent hidden floats**.
 
-Attacker: replace the hand-written causal pointer with a completely generic GRU.
-
-The GRU gets exactly the same four persistent hidden floats. It is trained offline on many synthetic lifetimes but receives no privileged architecture for selfhood.
-
-Fresh seeds `301..303`:
+Fresh `301..303`:
 
 ```text
                          pointer      generic GRU
@@ -99,188 +72,155 @@ harder OOD silent         0.939          0.915
 harder OOD transfer       0.547          0.810
 ```
 
-The generic GRU has 152 slow parameters and four persistent state floats.
+**SPECIAL-PRIMITIVE CLAIM FAILS.** Generic recurrence learns the same binding and adapts faster after ownership changes.
 
-**Gate 1 kills the "special self primitive" claim.** Generic recurrence can learn the same causal binding and adapts faster after ownership changes.
+Naming a hidden vector `I` does not make it special.
 
-That is important: naming a hidden state `I` does not make it special.
+## Gate 2 — emergent self-address without self labels
 
----
+Now remove the owner label entirely.
 
-## Gate 2 — will a self-address emerge when the model is never taught one?
-
-This is the current strongest experiment.
-
-A generic 8-float GRU sees only sensorimotor history. At every time step it is also handed four fresh random values, one attached to each candidate entity. The training target is simply:
+An 8-float generic GRU sees only sensorimotor history. Every step also presents four fresh random values, one attached to each candidate entity. The training target is simply:
 
 ```text
-return the random value belonging to the currently causally-controlled entity
+return the fresh value attached to the currently causally-controlled entity
 ```
 
-The random values are regenerated every step, so they cannot be memorized. The only reusable solution is to maintain some representation of *which entity currently occupies the causal first-person role*.
+The random values change every step, so memorizing answers is impossible. The reusable hidden fact is which entity currently occupies the causal first-person role.
 
-Crucially, **the network is never trained on an owner/self label.**
-
-Fresh seeds `401..403`:
+Fresh `401..403`:
 
 ```text
 downstream query NMSE                    0.0910
-linear probe of hidden state -> owner    0.9576
+linear hidden-state -> owner probe       0.9576
 ```
 
-Then comes the causal attacker.
-
-For each owner, compute the mean recurrent hidden state on held-out data. During silent periods, replace the model's actual hidden state with the centroid associated with a *different* owner while leaving the current query values unchanged.
+Then the causal intervention: during silent periods, replace the model's hidden state with the mean state associated with a **different** owner while leaving the current query values unchanged.
 
 ```text
-counterfactual intervention follows
-injected owner                           0.9744
-
-mean distance to original owner's value 1.096
-mean distance to injected owner's value 0.064
+output follows injected owner            0.9744
+mean distance to original owner's value  1.096
+mean distance to injected owner's value  0.064
 ```
 
-**Gate 2 passes.** In this toy, generic recurrence develops a hidden variable that is:
+**PASS.** The model was never trained on a self label, yet its recurrent state contains a linearly decodable and causally used deictic owner variable.
 
-1. highly predictive of causal owner;
-2. learned without self labels;
-3. necessary for an arbitrary family of self-relative queries;
-4. causally manipulable: moving the hidden state moves which entity the model answers *as*.
+This still says nothing about phenomenal consciousness.
 
-That is still not consciousness. But it is much closer to an operational computational meaning of `I` than a special token or a manually named vector.
+## Gate 3 — is the latent reusable, or only task-specific?
 
----
+Freeze the Gate-2 recurrent core.
 
-## Current working definition
+Invent a new binary self-relative query task. Train only a tiny new head from **256 task labels** and never provide owner labels. Evaluate only in silent periods where current action/consequence evidence cannot identify the owner.
 
-For this repo, **I** provisionally means:
-
-> **A persistent, reusable deictic state that binds ongoing computation to the entity whose actions have the relevant causal consequences, and which can be reused across otherwise unrelated self-relative queries.**
-
-This definition is intentionally functional and falsifiable.
-
-It does **not** require that the state be explicit, one-dimensional, human-readable, conscious, or implemented by a special neural layer.
-
----
-
-## So where would this live in a transformer?
-
-The gates so far argue against prematurely installing an `I layer`.
-
-A transformer needs two things that ordinary feed-forward use does not provide by itself:
+Fresh `501..503`:
 
 ```text
-slow model weights θ
-    learned offline / consolidated slowly
-
-persistent life-state h_I(t)
-    updated online from action, consequence, memory and prediction error
-    carried across otherwise separate contexts
+frozen Gate-2 self core    0.9979
+same-size random core      0.7653
+current sensory state      0.6630
+oracle                     1.0000
 ```
 
-The unresolved architecture question is whether `h_I` needs privileged access to every block or whether an ordinary recurrent/persistent token or memory slot is sufficient.
+**PASS.** The learned recurrent state is reusable by a new task almost perfectly. That is the strongest evidence so far for the "join key" interpretation.
 
-A prefix token can already be attended to by later transformer layers, so **special placement must earn an empirical advantage**.
+## Working definition
 
-The next transformer experiment should compare, under matched state/resource budgets:
+For this repository, `I` provisionally means:
+
+> **A persistent, reusable deictic state that binds ongoing computation to the entity whose actions have the relevant causal consequences.**
+
+This is only the first layer of a possible hierarchy:
+
+```text
+self-address
+    which entity is the causal first-person referent?
+
+self-model
+    what can that entity do, feel, remember, predict, prefer?
+
+self-narrative
+    how is that model expressed across language and autobiography?
+```
+
+The experiments here currently support only the first object.
+
+## What happened to the backpropagation problem?
+
+It becomes much cleaner once training and living are separated.
+
+```text
+slow learning
+    backpropagation may train the machinery / update rule
+
+living
+    persistent state changes by forward dynamics
+    h_I(t) -> h_I(t+1)
+```
+
+Gate 0 is the extreme local case: the state update itself is a simple online correlation rule. Gates 1–3 use a GRU whose transition was learned by backpropagation, but **no backpropagation occurs while the test lifetime runs**. The recurrent state simply evolves forward.
+
+So the live question is not "how do we backpropagate an I through a life?"
+
+It is:
+
+> **Can a sufficiently generic, reusable self-address be acquired and revised by a local/test-time update rule while the slow model stays fixed?**
+
+That is Gate 4.
+
+## Where would this go in a transformer?
+
+A special `I layer` is **not earned**.
+
+A transformer implementation needs persistent state across otherwise separate contexts, but there are several already-plausible placements:
 
 ```text
 A  persistent prefix / memory token
-B  persistent KV memory
-C  per-block FiLM / residual "self bus"
-D  generic recurrent sidecar
+B  recurrent KV memory
+C  per-block residual / FiLM bus
+D  generic recurrent or fast-weight sidecar
 ```
 
-and ask whether any privileged architecture improves compositional transfer rather than merely making training easier.
+A prefix token can already be attended to by later layers, so privileged access to every block must demonstrate an advantage rather than being assumed.
 
----
-
-## The deeper hypothesis after Gate 2
-
-The interesting possibility is no longer that `I` is a special neuron, layer, eigenvector, or mass.
-
-It may be a **join key** created by repeated causal structure:
+The likely architecture now looks less like "layer 17 is I" and more like:
 
 ```text
-                     persistent deictic address
-                              |
-          +-------------------+-------------------+
-          |                   |                   |
-       action              memory              value
-          |                   |                   |
-       effect              episode             outcome
-          |                   |                   |
-          +-------------------+-------------------+
-                              |
-                         same latent role
+slow transformer weights θ
+           |
+           v
+      ordinary blocks  <------ persistent life-state h_I(t)
+           |                           ^
+           v                           |
+         action ----------------> consequence
+                                       |
+                                       +---- online state update
 ```
-
-Many tasks ask different questions, but the same binding answers *which entity those questions are relative to*.
-
-That gives a plausible computational reason for a self-model to appear: not metaphysics, but **factorization and reuse**.
-
----
-
-## What is killed / not earned
-
-See `KILL_LEDGER.md` for the permanent list. Short version:
-
-- `I` is not earned by first-person language.
-- `I` is not earned by a large activation or dominant PCA component.
-- persistent state alone is memory, not self.
-- a hand-written causal pointer is not a new primitive; generic recurrence can learn it.
-- a special transformer-wide `I bus` is not currently earned.
-- none of these experiments establish consciousness or subjective experience.
-
----
 
 ## Next gates
 
-### Gate 3 — reuse / factorization
+**Gate 4 — local fast updater vs BPTT-trained recurrence.** Can a fast-weight / local prediction-error updater acquire the reusable deictic state while the slow model is frozen?
 
-Does the emergent hidden self-address transfer cheaply to **new self-relative query families** never used to train the recurrent core?
+**Gate 5 — transformer placement.** Only after Gate 4: prefix token vs KV memory vs per-block bus vs sidecar under matched budgets.
 
-If yes, the useful object may be a task-independent deictic latent. If every new query requires relearning the whole system, the "join key" interpretation weakens.
-
-### Gate 4 — local fast learning vs lifetime backprop
-
-Freeze the slow network. Allow only a local online update rule for persistent life-state. Compare against a generic recurrent state learned by BPTT and against test-time-memory baselines.
-
-The central question is exactly the one that motivated the repo:
-
-> Can a system *live and update its self-address* without backpropagating through its lived history?
-
-### Gate 5 — transformer placement
-
-Only after Gates 3–4: prefix token vs KV memory vs per-block bus vs sidecar under matched budgets.
-
----
+See `HANDOFF_CURRENT.md` for the exact restart state and `KILL_LEDGER.md` for claims that may not be quietly resurrected.
 
 ## Run
 
-Gate 0 only needs NumPy:
-
 ```bash
+# Gate 0
 pip install -e .
 python experiments/gate0_deictic_pointer.py
-```
 
-Gates 1–2 use PyTorch:
-
-```bash
+# Gates 1-3
 pip install -e '.[torch]'
 python experiments/gate1_generic_memory_attacker.py
 python experiments/gate2_emergent_self_address.py
-```
+python experiments/gate3_reuse_factorization.py
 
-Tests:
-
-```bash
 python -m unittest discover -s tests -v
 ```
 
----
-
 ## Repo rule
 
-> **Do not call a state `I` because we named it that. Make the system need a deictic variable, let it learn whatever it learns, then probe and intervene on the result.**
+> **Do not call a state `I` because we named it that. Make the system need a deictic variable, let it learn whatever it learns, then probe, transfer, and intervene on the result.**
