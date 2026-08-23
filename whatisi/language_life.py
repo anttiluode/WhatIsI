@@ -189,6 +189,7 @@ class LanguageLife:
         self._losses: list[torch.Tensor] = []
         self.stats = {"correct": 0, "turns": 0, "loss": 0.0, "source_gap": 0.0}
         self.history: list[dict] = []
+        self._log_cursor = 0
 
     def _encode(self, events: list[Event]):
         ids, src = ByteEventEncoder.encode(events, self.cfg.max_tokens)
@@ -306,6 +307,7 @@ class LanguageLife:
             "world": asdict(self.world),
             "cfg": asdict(self.cfg),
             "stats": self.stats,
+            "events": [asdict(ev) for ev in self.events],
         }, path)
 
     def load_checkpoint(self, path: str | Path):
@@ -317,10 +319,17 @@ class LanguageLife:
         self.step = int(ck.get("step", 0))
         self.world = WorldState(**ck.get("world", {}))
         self.stats.update(ck.get("stats", {}))
+        self.events.clear()
+        for row in ck.get("events", []):
+            self.events.append(Event(**row))
 
     def save_log(self, path: str | Path):
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("w", encoding="utf-8") as f:
-            for row in self.history:
+        rows = self.history[self._log_cursor:]
+        if not rows:
+            return
+        with path.open("a", encoding="utf-8") as f:
+            for row in rows:
                 f.write(json.dumps(row, ensure_ascii=False) + "\n")
+        self._log_cursor = len(self.history)
