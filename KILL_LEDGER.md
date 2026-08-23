@@ -77,14 +77,14 @@ The state also survives name/voice swaps and rebinds after control transfer.
 
 **Yes, Gate 4C under the tested factorized lexical router.** Gate 4B is trained first and frozen. A tiny router then receives only speech source (`external` / `self-produced`) and pronoun (`I` / `YOU`) and learns which of three existing address sources to use: causal state, visible speaker, or visible addressee.
 
-Fresh development seeds 3/4/5:
+Fresh final-evaluator seeds 3/4/5:
 
 ```text
-self-produced I accuracy            0.999 / 0.994 / 0.993
-zero-causal-state self I            0.267 / 0.229 / 0.220
+self-produced I accuracy            0.998 / 0.994 / 0.993
+zero-causal-state self I            0.231 / 0.229 / 0.220
 external I with/without state       1.000 / 1.000
 YOU with/without state              1.000 / 1.000
-counterfactual I state swap         0.970 / 0.958 / 0.920
+counterfactual I state swap         0.975 / 0.948 / 0.903
 ```
 
 The late router becomes nearly one-hot: self+`I` -> causal address, external+`I` -> speaker, `YOU` -> addressee. A counterfactual causal-state replacement changes the linguistic referent while the lexical situation and visible world remain fixed.
