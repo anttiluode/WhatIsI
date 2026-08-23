@@ -121,19 +121,19 @@ self + I        -> causal address
 self + YOU      -> visible addressee
 ```
 
-Fresh development seeds 3/4/5:
+Fresh runs through the final committed evaluator, seeds 3/4/5:
 
 ```text
-self-produced I accuracy        0.9988 / 0.9942 / 0.9933
-zero-state self I              0.2668 / 0.2289 / 0.2197
+self-produced I accuracy        0.9977 / 0.9942 / 0.9933
+zero-state self I              0.2309 / 0.2289 / 0.2197
 external I                     1.000 / 1.000 / 1.000
 external I with state zeroed   1.000 / 1.000 / 1.000
 YOU                            1.000 / 1.000 / 1.000
 YOU with state zeroed          1.000 / 1.000 / 1.000
-counterfactual I state swap    0.9699 / 0.9583 / 0.9201
+counterfactual I state swap    0.9751 / 0.9479 / 0.9028
 ```
 
-The decisive intervention keeps the visible world and lexical situation `SELF-PRODUCED + I` fixed, replaces only the old causal state with a centroid for another currently visible body, and asks what `I` refers to. The word follows the injected body in ~92–97% of cases.
+The decisive intervention keeps the visible world and lexical situation `SELF-PRODUCED + I` fixed, replaces only the old causal state with a centroid for another currently visible body, and asks what `I` refers to. The word follows the injected body in ~90–98% of cases.
 
 Safe conclusion:
 
