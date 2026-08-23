@@ -4,13 +4,11 @@ Date: 2026-08-23
 
 ## Restart from here
 
-The repo began from the thought that `I` might be a special persistent transformer layer.
+Do **not** restart from the idea that `I` is a special transformer layer.
 
-Do **not** restart from that assumption.
+The current earned object is narrower and stronger:
 
-Current earned object:
-
-> **A generic recurrent system can learn a persistent deictic address for the current causal owner without self labels, because many otherwise unrelated queries share the same binding. New tasks can reuse that address.**
+> **A generic persistent state can act as a reusable deictic address for whichever represented entity currently occupies the learner's causal role. A transformer can use that state to join momentary relational/language interpretation to a continuing first-person referent.**
 
 Functional result only; not a consciousness claim.
 
@@ -18,171 +16,178 @@ Functional result only; not a consciousness claim.
 
 ```text
 Gate 0  local 4-float causal pointer                 PASS
-        accuracy 1.000; silent 1.000
-
 Gate 1  same-size generic GRU attacker               SPECIAL-PRIMITIVE CLAIM FAILS
-        hard OOD all 0.901 vs pointer 0.844
-        transfer     0.810 vs pointer 0.547
-
-Gate 2  8-float generic recurrence, no self labels   PASS
-        query NMSE 0.0910
-        hidden->owner probe 0.9576
-        counterfactual state intervention 0.9744
-
+Gate 2  generic recurrence, no self labels           PASS
 Gate 3  freeze core, invent new self-relative task   PASS
-        frozen core 0.9979
-        random core 0.7653
-        current sensory state 0.6630
 ```
 
-The Gate-3 result is the strongest reason to call the latent a **reusable deictic join key**.
+Key Gate-2/3 result: a recurrent latent can become a causally used, reusable deictic join key without an explicit self label.
 
----
+## Gate 4A — Language Life
 
-# Gate 4A — Language Life: BUILT, EXPLORATORY, NO VERDICT
+Status: **useful scaffold; not a deictic-identity gate.**
 
-The current build asks whether the same kind of causal/deictic factorization can begin to form from language/action experience.
+It built a long-running tiny language learner with:
 
-## Final current architecture
+- outside language,
+- self-emitted language,
+- symbolic consequences,
+- 24-float persistent state,
+- replay consolidation,
+- optional Phi-3 teacher.
+
+The 5000-turn Phi run learned language well, but analysis killed the stronger interpretation:
+
+- OBS/ACT provenance was explicitly supplied by source embeddings;
+- `source-gap` was directly supervised;
+- replay taught many phrase->action mappings with zero memory;
+- most language tasks did not require tracking a hidden causal body;
+- `I`/`you` phrases could often be solved lexically.
+
+Do not use Gate 4A as evidence for deictic identity.
+
+## Gate 4B — Hidden Causal Actor: PASS
+
+This is now the main transformer-side result.
+
+### World
+
+Each life has four visible agents with:
 
 ```text
-hashed word vocabulary        2048
-transformer width               64
-blocks                           2
-heads                            4
-persistent life-state           24 floats
-actions                         13
+stable body marker = shape
+mutable name
+mutable voice
+position
 ```
 
-Language arrives through separate provenance channels:
+Observation order is randomized every step.
+
+One body is controlled by the motor stream, but the model is never given a SELF/owner label.
+
+It must predict which **current visible name** will carry the consequence of its motor action.
+
+Mid-life attackers:
 
 ```text
-OBS  outside language
-ACT  language actually emitted by the student
+surface swap     names and voices reassigned, controlled body unchanged
+silent windows   no motor consequence available
+control transfer motor stream suddenly routed to another body
+distractor move  another body moves too
 ```
 
-The same phrase gets the same word-token IDs in either channel. Only the source/provenance embedding differs.
-
-Only `ACT` executes in the symbolic world. The world deliberately repeats some exact student phrases as non-causal `OBS` events.
-
-The action policy receives only:
+### Architecture
 
 ```text
-current world + current outside utterance + persistent life-state
+current relational scene + I/YOU role query
+                  |
+                  v
+             transformer
+                  |
+          current entity tokens
+                  |
+                  +-------------------+
+                  |                   |
+                  v                   v
+           pronoun head       entity-key matching
+                                      ^
+                                      |
+                           20-float recurrent sidecar
+                                      ^
+                                      |
+                           motor-consequence feedback
 ```
 
-It does not rummage through a full transcript. If older experience matters, persistent state must carry it.
+The transformer does momentary interpretation. The recurrent sidecar carries continuity. Zeroing only the sidecar leaves scene/language perception intact.
 
-## Learning timescales
-
-The development build settled on a useful split:
+### Fresh seeds 3 / 4 / 5
 
 ```text
-FAST / LIVING
-persistent h(t) updates every turn by forward dynamics
+actor consequence accuracy        0.923 / 0.919 / 0.928
+zero-memory actor accuracy        0.232 / 0.254 / 0.232
 
-SLOW / CONSOLIDATION
-recent heard-language episodes enter a replay buffer
-periodically replay trains transformer weights
+post surface-swap accuracy        0.995 / 0.986 / 0.997
+post transfer accuracy            0.999 / 1.000 / 1.000
+
+I/YOU role accuracy               0.895 / 0.945 / 0.912
+silent self-body linear probe     0.944 / 0.944 / 0.834
+
+held-out join NMSE                0.068 / 0.121 / 0.177
+zero-memory join NMSE             0.927 / 0.937 / 0.935
+
+counterfactual state intervention 0.988 / 0.975 / 0.966
 ```
 
-Default short unroll = 8 turns. Default consolidation = every 64 turns, 64 replay updates.
+All seeds pass all precommitted checks.
 
-Replay was necessary because a tiny model seeing each elementary phrase once did not reliably consolidate the language mapping. Do not interpret replay as a deictic result; it is the slow-language-learning mechanism.
+### What is earned
 
-The original stronger Gate 4 remains open: can the reusable deictic state itself be updated by a local/test-time plasticity rule while slow weights stay frozen?
+Safe conclusion:
 
-## Teacher
+> A transformer scene/language encoder plus a generic recurrent sidecar can learn a hidden causal-body binding that survives surface-identity changes, persists through silence, rebinds after agency transfer, transfers to a new self-relative task, and causally controls that task under state intervention.
 
-Teacher backends:
+This reconnects the transformer line to Gate 2/3.
 
-```text
-scripted
-llama-cpp GGUF
-Ollama
-```
+### What is not earned
 
-Recommended local language teacher:
+- no consciousness claim;
+- no claim that a GRU sidecar is special;
+- no claim that this beats a memory token, recurrent KV memory, fast weights, or a generic recurrent transformer;
+- the actor readout is allowed to use persistent state as an entity selector;
+- backprop still trains the update rule across synthetic lives.
 
-```text
-microsoft/Phi-3-mini-4k-instruct-gguf
-Phi-3-mini-4k-instruct-q4.gguf
-```
-
-The LLM teacher only expands a cached paraphrase bank. It cannot inspect student hidden state, label `self`, or perform the scientific probe.
-
-## Curriculum
-
-Before turn 2000 by default, outside language avoids first- and second-person pronouns.
-
-Afterward, `I` / `you` phrasing may appear.
-
-The eventual question is whether those words attach to causal structure that was already useful, rather than creating the structure by label.
-
-## Development sanity only
-
-One scripted seed was run for 512 turns to make sure the live experiment actually learns:
-
-```text
-turn    recent acc    source-gap
-  64      0.172        -0.050
- 128      0.080        +0.018
- 192      0.180        +0.117
- 256      0.330        +0.203
- 320      0.500        +0.382
- 384      0.760        +0.450
- 448      0.880        +0.508
- 512      0.930        +0.898
-```
-
-This is **not a gate**. It says only that the phrase-learning/replay loop and ACT-vs-OBS provenance task are functioning.
-
-A positive `source-gap` is not a self-address result.
-
-## What to run
-
-Start scripted:
+## Run now
 
 ```bash
 pip install -e '.[torch]'
-python experiments/run_language_gui.py --teacher scripted
+python experiments/gate4b_hidden_actor.py
 ```
 
-Headless:
+Single-seed smoke run:
 
 ```bash
-python experiments/gate4a_language_life.py --teacher scripted --steps 5000
+python experiments/gate4b_hidden_actor.py --quick --seeds 3
 ```
 
-Optional Phi teacher:
+See `docs/GATE4B_HIDDEN_ACTOR.md`.
 
-```bash
-pip install -e '.[teacher]'
-python experiments/download_phi_teacher.py
-python experiments/run_language_gui.py \
-  --teacher llama \
-  --model models/Phi-3-mini-4k-instruct-q4.gguf
-```
+## Next scientific road
 
-Use `--resume` to continue the checkpoint in `runs/language_life.pt`.
+### Gate 4C — remove the entity-selector bias
 
-## Next scientific attacker after a long run
+Gate 4B's recurrent state is generic, but the actor head explicitly compares persistent state against current entity keys.
 
-Do **not** declare emergence because dialogue or hidden-state plots look interesting.
+Next attacker:
 
-Freeze the student and invent a new delayed self-relative task with no source labels. Compare:
+> Can an equal-budget generic recurrent transformer / memory-token architecture discover and use the same factorization without a hand-shaped entity-selector readout?
+
+Matched candidates:
 
 ```text
-persistent life-state
-context-only matched transformer
-random persistent state
-state-shuffled / state-intervened model
+A  Gate-4B recurrent sidecar + entity-key readout
+B  persistent memory token
+C  recurrent KV state
+D  generic GRU/SSM sidecar with unconstrained MLP readout
 ```
 
-Then intervene on the persistent state while current words/world remain fixed.
+If B/C/D match A, the special entity-selector wiring is unnecessary.
 
-Only reusable transfer plus causal state intervention reconnects Language Life to the earned Gate-2/3 deictic result.
+### Local/test-time plasticity remains open
 
-## Transformer placement
+The original stronger Gate 4 question is still alive:
 
-A privileged `I layer` remains unearned. If Language Life eventually produces a reusable deictic state, compare prefix token, recurrent KV state, per-block bus, and generic sidecar under matched state budgets.
+> Can the reusable deictic address be acquired/revised by a local or fast-weight update rule while slow model weights remain fixed?
+
+## Current interpretation of backpropagation
+
+```text
+slow backprop
+    learns how to interpret scenes
+    learns how to update/use persistent state
+
+one particular life
+    forward action/consequence stream determines
+    which entity that persistent state currently refers to
+```
+
+Backprop learns **how to form an I-address**. Forward life determines **which entity occupies it now**.
