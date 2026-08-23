@@ -14,7 +14,24 @@ def make_teacher(args):
     elif args.teacher == "llama":
         if not args.model:
             raise SystemExit("--model PATH_TO_GGUF is required for --teacher llama")
-        backend = LlamaCppBackend(args.model, n_gpu_layers=args.gpu_layers, n_threads=args.threads)
+        try:
+            backend = LlamaCppBackend(args.model, n_gpu_layers=args.gpu_layers, n_threads=args.threads)
+        except OSError as e:
+            msg = str(e)
+            extra = ""
+            if "0xc000001d" in msg.lower() or "-1073741795" in msg:
+                extra = (
+                    "\n\nWindows raised 0xc000001d (illegal CPU instruction) while loading the "
+                    "prebuilt llama-cpp-python binary. This is below WhatIsI and usually means "
+                    "that the wheel was compiled for an instruction/backend combination that this "
+                    "machine cannot execute.\n\n"
+                    "Recommended Windows fallback: import the same GGUF into Ollama with the repo's "
+                    "Modelfile.phi3, then run:\n"
+                    "  ollama create whatisi-phi -f Modelfile.phi3\n"
+                    "  python experiments/gate4a_language_life.py --teacher ollama "
+                    "--ollama-model whatisi-phi --steps 5000\n"
+                )
+            raise SystemExit(f"Could not initialize llama-cpp teacher: {e}{extra}") from e
     else:
         backend = OllamaBackend(args.ollama_model, args.ollama_host)
     teacher = LanguageTeacher(backend, seed=args.seed, refresh_size=args.refresh_size)
@@ -37,6 +54,8 @@ def main():
     ap.add_argument("--refresh-every", type=int, default=250)
     ap.add_argument("--refresh-size", type=int, default=24)
     ap.add_argument("--deixis-after", type=int, default=2000, help="allow I/you teacher phrasing after this many turns; -1 disables")
+    ap.add_argument("--epsilon-action", type=float, default=0.10, help="forced random-action probability during life; use 0 for a no-exploration run")
+    ap.add_argument("--sample-temperature", type=float, default=0.85, help="student action sampling temperature; use 0 for greedy actions")
     ap.add_argument("--save-every", type=int, default=250)
     ap.add_argument("--checkpoint", default="runs/language_life.pt")
     ap.add_argument("--log", default="runs/language_life.jsonl")
@@ -53,7 +72,11 @@ def main():
         except Exception as e:
             print(f"teacher refresh failed; existing/scripted bank remains usable: {e}")
 
-    cfg = LifeConfig(deixis_after=(10**12 if args.deixis_after < 0 else args.deixis_after))
+    cfg = LifeConfig(
+        deixis_after=(10**12 if args.deixis_after < 0 else args.deixis_after),
+        epsilon_action=max(0.0, min(1.0, args.epsilon_action)),
+        sample_temperature=max(0.0, args.sample_temperature),
+    )
     life = LanguageLife(teacher, cfg, seed=args.seed, device=args.device)
     if args.resume and Path(args.checkpoint).exists():
         life.load_checkpoint(args.checkpoint)
