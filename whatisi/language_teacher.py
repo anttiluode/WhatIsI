@@ -151,7 +151,12 @@ class LanguageTeacher:
         return self.rng.choice(valid_actions)
 
     def save_bank(self, path: str | Path):
-        Path(path).write_text(json.dumps({"plain": self.bank_plain, "deictic": self.bank_deictic}, indent=2, ensure_ascii=False), encoding="utf-8")
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps({"plain": self.bank_plain, "deictic": self.bank_deictic}, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
 
     def load_bank(self, path: str | Path):
         p = Path(path)
