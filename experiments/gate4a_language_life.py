@@ -59,12 +59,14 @@ def main():
         life.load_checkpoint(args.checkpoint)
         print(f"resumed step {life.step}")
 
+    last = None
     for _ in range(args.steps):
         row = life.turn(train=True)
+        last = row
         if row["step"] <= 20 or row["step"] % 20 == 0:
             print(
-                f"{row['step']:6d} acc={row['accuracy']:.3f} loss={row['loss']:.3f} "
-                f"mem={row['memory_norm']:.2f} srcgap={row['source_gap']:+.3f} | "
+                f"{row['step']:6d} recent={row['recent_accuracy']:.3f} all={row['accuracy']:.3f} "
+                f"loss={row['loss']:.3f} mem={row['memory_norm']:.2f} srcgap={row['source_gap']:+.3f} | "
                 f"OBS {row['heard']!r} -> ACT {row['action']!r} -> {row['feedback']}"
             )
         if args.teacher != "scripted" and args.refresh_every > 0 and row["step"] % args.refresh_every == 0:
@@ -81,7 +83,10 @@ def main():
     life.checkpoint(args.checkpoint)
     life.save_log(args.log)
     teacher.save_bank(args.bank)
-    print(json.dumps({"step": life.step, **life.stats}, indent=2))
+    summary = {"step": life.step, **life.stats}
+    if last is not None:
+        summary["recent_accuracy"] = last["recent_accuracy"]
+    print(json.dumps(summary, indent=2))
 
 
 if __name__ == "__main__":
