@@ -15,8 +15,6 @@ import torch.nn.functional as F
 
 from .language_teacher import ACTIONS, LanguageTeacher
 
-# Stable hashed word tokens. Provenance is a separate embedding, so identical words
-# have identical token IDs whether observed or emitted.
 SRC_OBS = 0
 SRC_ACT = 1
 SRC_FEEDBACK = 2
@@ -146,7 +144,6 @@ class EventEncoder:
         return torch.tensor(ids, dtype=torch.long), torch.tensor(src, dtype=torch.long)
 
 
-# Backward-compatible name used by the first tests/docs.
 ByteEventEncoder = EventEncoder
 
 
@@ -154,7 +151,7 @@ class LifeTransformer(nn.Module):
     def __init__(self, cfg: LifeConfig, n_actions: int = len(ACTIONS)):
         super().__init__()
         self.cfg = cfg
-        self.byte_emb = nn.Embedding(EventEncoder.VOCAB_SIZE, cfg.d_model)
+        self.token_emb = nn.Embedding(EventEncoder.VOCAB_SIZE, cfg.d_model)
         self.src_emb = nn.Embedding(N_SOURCES, cfg.d_model)
         self.pos_emb = nn.Embedding(cfg.max_tokens + 1, cfg.d_model)
         self.mem_to_token = nn.Linear(cfg.memory_dim, cfg.d_model)
@@ -178,7 +175,7 @@ class LifeTransformer(nn.Module):
             ids, src = ids.unsqueeze(0), src.unsqueeze(0)
         _, T = ids.shape
         pos = torch.arange(T, device=ids.device).unsqueeze(0)
-        x = self.byte_emb(ids) + self.src_emb(src) + self.pos_emb(pos + 1)
+        x = self.token_emb(ids) + self.src_emb(src) + self.pos_emb(pos + 1)
         memtok = self.mem_to_token(memory).unsqueeze(1) + self.pos_emb.weight[0].view(1, 1, -1)
         h = self.encoder(torch.cat([memtok, x], dim=1))
         return self.norm(h[:, 0])
@@ -228,8 +225,8 @@ class LanguageLife:
             return int(torch.multinomial(p, 1).item())
         return int(torch.argmax(logits[0]).item())
 
-    def _source_gap_probe(self, phrase: str) -> float:
-        base = list(self.events)
+    def _source_gap_probe(self, phrase: str, base_events: list[Event] | None = None) -> float:
+        base = list(base_events) if base_events is not None else list(self.events)
         with torch.no_grad():
             probs = []
             for source in (SRC_OBS, SRC_ACT):
@@ -241,8 +238,6 @@ class LanguageLife:
     def _consolidate_replay(self):
         if not self.replay or self.cfg.consolidation_steps <= 0:
             return
-        # End any temporal graph before changing slow weights. Persistent numeric
-        # life-state survives; slow language machinery learns from replay.
         self.memory = self.memory.detach()
         self.model.train(True)
         zero_mem = torch.zeros_like(self.memory)
@@ -266,8 +261,6 @@ class LanguageLife:
         self.events.append(world_event)
         self.events.append(heard_event)
 
-        # Current utterance + persistent memory choose the action. Older text is
-        # excluded here; if the past matters, the life-state has to carry it.
         pre_action_events = [world_event, heard_event]
         ids, src = self._encode(pre_action_events)
         action_logits, _, _ = self.model(ids, src, self.memory)
@@ -277,13 +270,11 @@ class LanguageLife:
         target_idx = ACTIONS.index(target_action)
         self.replay.append((self.world.describe(), heard, target_idx))
 
-        # Same phrase, two provenances, before feedback exists.
         ids_a, src_a = self._encode(pre_action_events + [Event(SRC_ACT, spoken_surface)])
         _, causal_act, _ = self.model(ids_a, src_a, self.memory)
         ids_o, src_o = self._encode(pre_action_events + [Event(SRC_OBS, spoken_surface)])
         _, causal_obs, _ = self.model(ids_o, src_o, self.memory)
 
-        # Only ACT executes.
         self.events.append(Event(SRC_ACT, spoken_surface))
         feedback, changed = self.world.apply(chosen)
         self.events.append(Event(SRC_FEEDBACK, feedback, int(changed)))
@@ -295,8 +286,6 @@ class LanguageLife:
             echoed = True
 
         loss_action = F.cross_entropy(action_logits, torch.tensor([target_idx], device=self.device))
-        # This head predicts causal authority, not whether an attempted action happened
-        # to be blocked by the current world state.
         loss_causal = 0.5 * (
             F.cross_entropy(causal_act, torch.tensor([1], device=self.device))
             + F.cross_entropy(causal_obs, torch.tensor([0], device=self.device))
@@ -315,7 +304,6 @@ class LanguageLife:
         if train:
             self._losses.append(loss)
 
-        # Post-consequence stream updates persistent life-state.
         ids_after, src_after = self._encode(list(self.events))
         _, _, h_after = self.model(ids_after, src_after, self.memory)
         self.memory = self.model.update_memory(h_after, chosen_idx, int(changed), self.memory)
@@ -327,7 +315,7 @@ class LanguageLife:
         self.recent_correct.append(correct)
         self.stats["loss"] = float(loss.detach().item())
         if self.step % 10 == 0:
-            self.stats["source_gap"] = self._source_gap_probe(spoken_surface)
+            self.stats["source_gap"] = self._source_gap_probe(spoken_surface, pre_action_events)
 
         if train and len(self._losses) >= self.cfg.unroll:
             total = torch.stack(self._losses).mean()
