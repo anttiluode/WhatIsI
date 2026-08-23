@@ -4,7 +4,7 @@
 
 This repository does **not** test consciousness, qualia, personhood, or sentience. It asks a smaller functional question:
 
-> If a learning system acts, receives consequences, persists through time, and repeatedly has to answer unrelated questions relative to the same causal agent, does it construct a persistent **deictic self-address**?
+> If a learning system acts, receives consequences, persists through time, and repeatedly has to answer unrelated questions relative to the same causal agent, does it construct a persistent **deictic self-address** — and can language later bind `I` onto it?
 
 The starting idea was that `I` might be a special transformer layer. The gates have pushed the project somewhere else.
 
@@ -30,11 +30,15 @@ Gate 4A language life
 Gate 4B hidden causal actor
         -> transformer scene encoder + recurrent sidecar
            learns hidden causal body and reusable deictic state
+        v
+Gate 4C late I binding
+        -> freeze Gate 4B first
+           self-produced I binds onto the old causal address
 ```
 
 Current hypothesis:
 
-> **A self-address can be an ordinary persistent latent variable that learning discovers because many otherwise unrelated computations share the same deictic binding.**
+> **A self-address can be an ordinary persistent latent variable that learning discovers because many otherwise unrelated computations share the same deictic binding. Language can then learn that `I` is one pointer into that already-existing coordinate.**
 
 ---
 
@@ -94,19 +98,17 @@ Status: **useful scaffold; not a deictic-identity gate.**
 
 Gate 4A built a continuing language/action learner with a tiny transformer, persistent state, replay consolidation, and optional Phi-3 teacher.
 
-It demonstrated that a small student can learn from a long outside-language stream and distinguish language arriving through separate `OBS` and `ACT` channels.
-
-But the analysis killed the stronger interpretation:
+The 5000-turn Phi run demonstrated useful language learning, but analysis killed the stronger self interpretation:
 
 - provenance was explicitly supplied by source embeddings;
-- the auxiliary `source-gap` objective directly supervised ACT-vs-OBS distinction;
+- `source-gap` was directly supervised;
 - replay trained elementary phrase -> action mappings with zero persistent memory;
 - the task rarely required knowing which represented body was causally "mine";
 - `I` / `you` phrases could often be solved as ordinary lexical patterns.
 
 So Gate 4A remains useful engineering, but **does not earn deictic identity**.
 
-The Phi teacher path remains available through Ollama or GGUF. See `docs/GATE4A_LANGUAGE_LIFE.md` and `docs/WINDOWS_PHI_TEACHER.md`.
+See `docs/GATE4A_LANGUAGE_LIFE.md` and `docs/WINDOWS_PHI_TEACHER.md`.
 
 ---
 
@@ -114,22 +116,13 @@ The Phi teacher path remains available through Ollama or GGUF. See `docs/GATE4A_
 
 Gate 4B makes the identity of the causal actor itself a hidden variable.
 
-Each synthetic life contains four visible agents. Every body has:
-
-- a stable `shape` marker,
-- a mutable name,
-- a mutable voice,
-- a position.
-
-Observation order is randomized every step. One body is controlled by the student's motor stream, but the model never receives a `SELF` or owner label.
+Each synthetic life contains four visible agents. Every body has a stable `shape` marker, mutable name/voice, and position. Observation order is randomized every step. One body is controlled by the learner's motor stream, but the model never receives a `SELF` or owner label.
 
 The main target is consequence prediction:
 
 > Given the current world and motor stream, which **currently visible name** will carry the motor consequence?
 
-The body/name distinction matters because names and voices are reassigned mid-life while the controlled body remains the same.
-
-Additional attackers:
+Attacks:
 
 ```text
 surface swap     names + voices change, body stays
@@ -138,9 +131,7 @@ control transfer motor stream suddenly controls another body
 distractor move  another body moves too
 ```
 
-## Architecture
-
-Gate 4B ended up with a cleaner separation than Gate 4A:
+Architecture:
 
 ```text
 current relational scene + language roles
@@ -162,42 +153,19 @@ current relational scene + language roles
                          motor consequence feedback
 ```
 
-The transformer handles current relational/language interpretation. A generic GRU sidecar carries continuity across moments. Zeroing the sidecar leaves current perception and language intact, giving a clean ablation.
+The transformer handles current relational/language interpretation. A generic GRU sidecar carries continuity across moments. Zeroing the sidecar leaves current perception and language intact.
 
-## Deictic language
-
-Every step also chooses an arbitrary speaker and addressee. The model receives their names plus either `I` or `YOU` and must recover the referred agent's position.
-
-```text
-I   -> current speaker
-YOU -> current addressee
-```
-
-The referent changes constantly, so no fixed entity can be memorized as `I`.
-
-## Held-out reuse and intervention
-
-After training, freeze the core.
-
-During silent periods attach fresh random values to all possible bodies. Train only a tiny new selector from **256 task labels** to return the value belonging to the current causal body. The selector never receives owner labels.
-
-Then replace persistent state with a centroid associated with another body while keeping the current query values fixed.
-
-Fresh local runs, seeds 3 / 4 / 5:
+Fresh seeds 3 / 4 / 5:
 
 ```text
 actor consequence accuracy        0.923 / 0.919 / 0.928
 zero-memory actor accuracy        0.232 / 0.254 / 0.232
-
 post surface-swap accuracy        0.995 / 0.986 / 0.997
 post transfer accuracy            0.999 / 1.000 / 1.000
-
 I/YOU role accuracy               0.895 / 0.945 / 0.912
 silent self-body linear probe     0.944 / 0.944 / 0.834
-
 held-out join NMSE                0.068 / 0.121 / 0.177
 zero-memory join NMSE             0.927 / 0.937 / 0.935
-
 counterfactual state intervention 0.988 / 0.975 / 0.966
 ```
 
@@ -207,17 +175,89 @@ Safe conclusion:
 
 > **A small transformer for current relational/language interpretation plus a generic persistent recurrent sidecar can learn a hidden causal-body binding that survives surface identity swaps, rebinds after control transfer, remains decodable through silent intervals, transfers to a new self-relative task, and causally controls that task under state intervention.**
 
-This is the first transformer-side result that reconnects cleanly to Gates 2–3.
-
-It still does **not** show that a GRU sidecar is special, that this placement beats persistent tokens/KV/fast weights, or that the system is conscious.
+Gate 4B left one important residual: its persistent causal address and its ordinary `I = speaker`, `YOU = addressee` role task were both useful, but they were not forced to be the same coordinate.
 
 See `docs/GATE4B_HIDDEN_ACTOR.md`.
 
 ---
 
-## Run
+# Gate 4C — Late `I` Binding: PASS
 
-Core gates:
+Gate 4C attacks that residual by changing the developmental order.
+
+1. Train Gate 4B exactly as before.
+2. Freeze the entire Gate-4B causal core.
+3. Only then introduce a tiny lexical router trained from **256 late labels**.
+
+The router is offered three already-existing address sources:
+
+```text
+0  causal address       frozen Gate-4B persistent state -> current entity
+1  visible speaker      ordinary social role
+2  visible addressee    ordinary social role
+```
+
+The router itself sees only:
+
+```text
+speech source   external / self-produced
+pronoun         I / YOU
+```
+
+For self-produced `I`, **no speaker name or body identity is supplied**. `self-produced` says only that the utterance came through the learner's output/efference channel; it does not identify which visible body currently occupies that causal role.
+
+The learned routing becomes nearly one-hot:
+
+```text
+external + I    -> visible speaker
+external + YOU  -> visible addressee
+self + I        -> causal address
+self + YOU      -> visible addressee
+```
+
+Fresh development seeds 3 / 4 / 5:
+
+```text
+self-produced I accuracy        0.9988 / 0.9942 / 0.9933
+zero-state self I              0.2668 / 0.2289 / 0.2197
+external I                     1.000 / 1.000 / 1.000
+external I with state zeroed   1.000 / 1.000 / 1.000
+YOU                            1.000 / 1.000 / 1.000
+YOU with state zeroed          1.000 / 1.000 / 1.000
+counterfactual I state swap    0.9699 / 0.9583 / 0.9201
+```
+
+The decisive intervention holds fixed:
+
+```text
+visible world
+lexical situation = SELF-PRODUCED + I
+late lexical-router weights
+slow Gate-4B weights
+```
+
+Only the old causal state is replaced by a centroid associated with another body currently visible in the same scene.
+
+```text
+same scene
+same word I
+same router
+
+h_I(A) -> I refers to A
+h_I(C) -> I refers to C
+```
+
+Safe conclusion:
+
+> **A lexical first-person system introduced only after a causal self-address has already formed can learn to bind self-produced `I` onto that pre-existing address. Removing the causal state selectively destroys self-`I`; counterfactual state replacement moves the linguistic referent while the word and world remain fixed.**
+
+This closes the specific Gate-4B residual, but Gate 4C is still deliberately factorized. The late learner is offered three candidate address channels; it does not prove that a completely unconstrained transformer would invent this routing structure unaided.
+
+See `docs/GATE4C_LATE_I_BINDING.md`.
+
+---
+
+## Run
 
 ```bash
 pip install -e '.[torch]'
@@ -225,18 +265,14 @@ python experiments/gate0_deictic_pointer.py
 python experiments/gate1_generic_memory_attacker.py
 python experiments/gate2_emergent_self_address.py
 python experiments/gate3_reuse_factorization.py
-```
-
-Gate 4B:
-
-```bash
 python experiments/gate4b_hidden_actor.py
+python experiments/gate4c_late_i_binding.py
 ```
 
-Quick smoke run:
+Gate 4C single-seed smoke:
 
 ```bash
-python experiments/gate4b_hidden_actor.py --quick --seeds 3
+python experiments/gate4c_late_i_binding.py --quick --seeds 3
 ```
 
 Gate 4A Language Life remains available:
@@ -255,8 +291,6 @@ python -m unittest discover -s tests -v
 
 ## What backpropagation means here
 
-The project now has a cleaner answer to the original question.
-
 ```text
 slow learning / backprop
     learns how current scenes are interpreted
@@ -265,13 +299,18 @@ slow learning / backprop
 one particular life / forward dynamics
     determines which body currently occupies the causal role
     h_I(t) -> h_I(t+1)
+
+late lexical learning
+    can learn that self-produced I points to h_I
 ```
 
-The slow weights learn **how to form and use a deictic address**. A particular stream of action and consequence determines **which entity that address refers to here and now**.
+The slow weights learn **how to form and use a deictic address**. A particular stream of action and consequence determines **which entity that address refers to here and now**. Gate 4C shows that language can later learn **which word points to it**.
 
-The stronger open problem remains:
+The stronger open problems remain:
 
-> Can the reusable deictic state itself be acquired and revised by a local/test-time plasticity rule while slow weights stay frozen?
+- remove the explicit factorized entity/address readouts and compare generic equal-budget architectures;
+- test natural varied first-person language rather than the symbolic late lexical router;
+- acquire/revise the reusable deictic state by local/test-time plasticity while slow weights stay frozen.
 
 ---
 
@@ -279,7 +318,7 @@ The stronger open problem remains:
 
 For this repository, `I` provisionally means:
 
-> **A persistent, reusable deictic state that binds ongoing computation to the entity whose actions have the relevant causal consequences.**
+> **A persistent, reusable deictic state that binds ongoing computation to the entity whose actions have the relevant causal consequences; linguistic `I` can be a learned pointer to that state.**
 
 That is not yet a full self-model.
 
