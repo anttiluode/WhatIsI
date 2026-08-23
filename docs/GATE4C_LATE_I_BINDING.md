@@ -80,15 +80,15 @@ YOU          unchanged
 self I       collapses toward 4-agent chance
 ```
 
-Fresh local development runs:
+Fresh runs through the **final committed evaluator**:
 
 ```text
 seed     self-I    zero-state self-I    counterfactual I switch
- 3       0.9988         0.2668                 0.9699
- 4       0.9942         0.2289                 0.9583
- 5       0.9933         0.2197                 0.9201
+ 3       0.9977         0.2309                 0.9751
+ 4       0.9942         0.2289                 0.9479
+ 5       0.9933         0.2197                 0.9028
 
-mean     0.9954         0.2385                 0.9495
+mean     0.9951         0.2265                 0.9419
 ```
 
 External `I` and `YOU` remained 1.000 in these runs with or without the causal state.
@@ -117,14 +117,14 @@ late lexical router weights
 slow Gate-4B weights
 ```
 
-Only the old persistent causal state is replaced by a state centroid associated with another body currently visible in the same scene.
+Only the old persistent causal state is replaced by a state centroid associated with another body currently visible in the **same held-out world batch**.
 
 Then ask which current visible name `I` refers to.
 
 Across fresh seeds 3 / 4 / 5, the unchanged word `I` follows the injected counterfactual body at:
 
 ```text
-0.9699 / 0.9583 / 0.9201
+0.9751 / 0.9479 / 0.9028
 ```
 
 So the causal intervention is now linguistic:
