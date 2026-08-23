@@ -7,6 +7,7 @@ dependencies = ["numpy>=1.24"]
 
 [project.optional-dependencies]
 torch = ["torch>=2.1"]
+teacher = ["torch>=2.1", "llama-cpp-python>=0.3", "huggingface-hub>=0.24"]
 
 [tool.setuptools.packages.find]
 include = ["whatisi*"]
